@@ -1,0 +1,67 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/apucontilde/anybet/bet"
+)
+
+func bet_create_example() {
+	bet_create_1 := bet.Transaction{
+		Title:       "Brandon Sanderson will complete GRRM works when he dies.",
+		Description: "conditions rules???",
+		Ammount:     21203,
+		TxId:        "Pb//UQB/QyAM3wuagc4zpw==",
+	}
+	bet_create_2 := bet.Transaction{
+		Title:       "I will die before 48",
+		Description: "conditions rules???",
+		Ammount:     203,
+		TxId:        "Pb//UQasB/QyAM3wuagc4zpw==",
+	}
+
+	_, err := betRepository.Create(bet_create_1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = betRepository.Create(bet_create_2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sanderson_bet, err := betRepository.GetByName("Brandon Sanderson will complete GRRM works when he dies.")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("get by name: %+v\n", sanderson_bet)
+
+	sanderson_bet.Ammount = -1
+	if _, err := betRepository.Update(sanderson_bet.ID, *sanderson_bet); err != nil {
+		log.Fatal(err)
+	}
+
+	all, err := betRepository.All()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("\nAll bets:\n")
+	for _, bet := range all {
+		fmt.Printf("bet: %+v\n", bet)
+	}
+
+	if err := betRepository.Delete(sanderson_bet.ID); err != nil {
+		log.Fatal(err)
+	}
+
+	all, err = betRepository.All()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("\nAll bets:\n")
+	for _, bet := range all {
+		fmt.Printf("bet: %+v\n", bet)
+	}
+}
