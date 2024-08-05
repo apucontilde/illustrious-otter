@@ -43,6 +43,13 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
+	method := r.Method
+	fmt.Printf("method: %s\n", method)
+	if method != "POST" {
+		w.Header().Set("Allow", "POST")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	myName := r.PostFormValue("myName")
 	if myName == "" {
 		w.Header().Set("x-missing-field", "myName")
@@ -75,7 +82,7 @@ func Serve(port string, repository *transaction.SQLiteRepository) {
 			return ctx
 		},
 	}
-
+	fmt.Printf("listening on localhost%s\n", port)
 	err := server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
