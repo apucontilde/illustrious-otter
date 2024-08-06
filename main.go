@@ -100,7 +100,7 @@ func Serve(port string, repository *transaction.SQLiteRepository) {
 		Addr:    ":3333",
 		Handler: mux,
 	}
-	Info("listening on %s\n", server.Addr)
+	Info("listening", "addr", server.Addr)
 	err := server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		Info("server closed\n")

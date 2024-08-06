@@ -16,6 +16,7 @@
     - [x] GET ALL
     - [x] UPDATE
     - [ ] DELETE (virtual delete)
+    - [ ] Transaction schema fix
   - [ ] Transaction CRUD Integration Tests (httptester)
   - [ ] balance(start_date, end_date, filters) Impl
   - [ ] balance func testing

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -28,10 +29,12 @@ func (r *SQLiteRepository) Migrate() error {
 	query := `
 	CREATE TABLE IF NOT EXISTS transactions(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL UNIQUE,
-		description TEXT NOT NULL,
-		ammount INTEGER NOT NULL,
-		txid TEXT NOT NULL UNIQUE
+		userid INTEGER NOT NULL,
+		orderid INTEGER NOT NULL,
+		storeid INTEGER NOT NULL,
+		amount INTEGER NOT NULL,
+		details TEXT NOT NULL,
+		at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	`
 
@@ -40,7 +43,13 @@ func (r *SQLiteRepository) Migrate() error {
 }
 
 func (r *SQLiteRepository) Create(transaction TransactionCreate) (*Transaction, error) {
-	res, err := r.db.Exec("INSERT INTO transactions(title, description, ammount, txid) values(?,?,?, ?)", transaction.Title, transaction.Description, transaction.Ammount, transaction.TxId)
+	ctx := context.Background()
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := tx.Exec("INSERT INTO transactions( userid, orderid, storeid, amount, details) values(?,?,?,?,?)",
+		transaction.UserId, transaction.OrderId, transaction.StoreId, transaction.Amount, transaction.Details)
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
@@ -55,14 +64,20 @@ func (r *SQLiteRepository) Create(transaction TransactionCreate) (*Transaction, 
 	if err != nil {
 		return nil, err
 	}
+	row := tx.QueryRow("SELECT * FROM transactions WHERE Id = ?", id)
+	var t Transaction
+	if err := row.Scan(&t.ID, &t.UserId, &t.OrderId, &t.StoreId, &t.Amount, &t.Details, &t.At); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotExists
+		}
+		return nil, err
+	}
 
-	return &Transaction{
-		ID:          id,
-		Title:       transaction.Title,
-		Description: transaction.Description,
-		Ammount:     transaction.Ammount,
-		TxId:        transaction.TxId,
-	}, nil
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 func (r *SQLiteRepository) All() ([]Transaction, error) {
@@ -74,11 +89,11 @@ func (r *SQLiteRepository) All() ([]Transaction, error) {
 
 	var all []Transaction
 	for rows.Next() {
-		var transaction Transaction
-		if err := rows.Scan(&transaction.ID, &transaction.Title, &transaction.Description, &transaction.Ammount, &transaction.TxId); err != nil {
+		var t Transaction
+		if err := rows.Scan(&t.ID, &t.UserId, &t.OrderId, &t.StoreId, &t.Amount, &t.Details, &t.At); err != nil {
 			return nil, err
 		}
-		all = append(all, transaction)
+		all = append(all, t)
 	}
 	return all, nil
 }
@@ -86,21 +101,22 @@ func (r *SQLiteRepository) All() ([]Transaction, error) {
 func (r *SQLiteRepository) GetById(Id string) (*Transaction, error) {
 	row := r.db.QueryRow("SELECT * FROM transactions WHERE Id = ?", Id)
 
-	var transaction Transaction
-	if err := row.Scan(&transaction.ID, &transaction.Title, &transaction.Description, &transaction.Ammount, &transaction.TxId); err != nil {
+	var t Transaction
+	if err := row.Scan(&t.ID, &t.UserId, &t.OrderId, &t.StoreId, &t.Amount, &t.Details, &t.At); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotExists
 		}
 		return nil, err
 	}
-	return &transaction, nil
+	return &t, nil
 }
 
 func (r *SQLiteRepository) Update(id int64, updated Transaction) (*Transaction, error) {
 	if id == 0 {
 		return nil, errors.New("invalid updated ID")
 	}
-	res, err := r.db.Exec("UPDATE transactions SET title = ?, description = ?, ammount = ?, txid = ? WHERE id = ?", updated.Title, updated.Description, updated.Ammount, updated.TxId, id)
+	res, err := r.db.Exec("UPDATE transactions SET userid = ?, orderid = ?, storeid = ?, amount = ?, details = ?  WHERE id = ?",
+		&updated.UserId, &updated.OrderId, &updated.StoreId, &updated.Amount, &updated.Details, id)
 	if err != nil {
 		return nil, err
 	}
