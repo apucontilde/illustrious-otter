@@ -6,21 +6,27 @@
 
 # TODO  
 
-- [ ] Misc
-  - [ ] centralized logging w debug mode
-- [ ] Accounting
+- [.] Misc
+  - [x] centralized logging w debug mode
+  - [ ] log to file
+- [ .] Accounting
   - [.] Transaction CRUD Impl
-  - [ ] Transaction CRUD Tests
+    - [x] POST
+    - [x] GET byId
+    - [x] GET ALL
+    - [x] UPDATE
+    - [ ] DELETE (virtual delete)
+  - [ ] Transaction CRUD Integration Tests (httptester)
   - [ ] balance(start_date, end_date, filters) Impl
   - [ ] balance func testing
   - [ ] balance func usages Interface
 - [ ] Auth
   - [ ] User CRUD
-  - [ ] OAuth
-  - [ ] API security design pub vs priv
+  - [ ] Role CRUD
+  - [ ] Authentication with OAuth
+  - [ ] (Store)Role based Authorization
+  - [ ] Auth middlewares
 - [ ] Ecommerce
-  - [ ] User CRUD
-  - [ ] OAuth
   - [ ] Store CRUD
   - [ ] Product CRUD
   - [ ] Cart CRUD
