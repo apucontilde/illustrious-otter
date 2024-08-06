@@ -39,7 +39,7 @@ func (r *SQLiteRepository) Migrate() error {
 	return err
 }
 
-func (r *SQLiteRepository) Create(transaction Transaction) (*Transaction, error) {
+func (r *SQLiteRepository) Create(transaction TransactionCreate) (*Transaction, error) {
 	res, err := r.db.Exec("INSERT INTO transactions(title, description, ammount, txid) values(?,?,?, ?)", transaction.Title, transaction.Description, transaction.Ammount, transaction.TxId)
 	if err != nil {
 		var sqliteErr sqlite3.Error
@@ -55,9 +55,14 @@ func (r *SQLiteRepository) Create(transaction Transaction) (*Transaction, error)
 	if err != nil {
 		return nil, err
 	}
-	transaction.ID = id
 
-	return &transaction, nil
+	return &Transaction{
+		ID:          id,
+		Title:       transaction.Title,
+		Description: transaction.Description,
+		Ammount:     transaction.Ammount,
+		TxId:        transaction.TxId,
+	}, nil
 }
 
 func (r *SQLiteRepository) All() ([]Transaction, error) {
@@ -78,8 +83,8 @@ func (r *SQLiteRepository) All() ([]Transaction, error) {
 	return all, nil
 }
 
-func (r *SQLiteRepository) GetByName(name string) (*Transaction, error) {
-	row := r.db.QueryRow("SELECT * FROM transactions WHERE title = ?", name)
+func (r *SQLiteRepository) GetById(Id string) (*Transaction, error) {
+	row := r.db.QueryRow("SELECT * FROM transactions WHERE Id = ?", Id)
 
 	var transaction Transaction
 	if err := row.Scan(&transaction.ID, &transaction.Title, &transaction.Description, &transaction.Ammount, &transaction.TxId); err != nil {

@@ -2,87 +2,91 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
-	"context"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 
 	"github.com/apucontilde/illustrious-otter/transaction"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const keyServerAddr = "serverAddr"
-
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	hasFirst := r.URL.Query().Has("first")
-	first := r.URL.Query().Get("first")
-	hasSecond := r.URL.Query().Has("second")
-	second := r.URL.Query().Get("second")
-
-	body, err := io.ReadAll(r.Body)
+func validateTransactionRequestBody(body io.Reader, transaction *transaction.TransactionCreate) error {
+	decoder := json.NewDecoder(body)
+	err := decoder.Decode(&transaction)
 	if err != nil {
-		fmt.Printf("could not read body: %s\n", err)
+		return err
 	}
-
-	fmt.Printf("%s: got / request. first(%t)=%s, second(%t)=%s, body:\n%s\n",
-		ctx.Value(keyServerAddr),
-		hasFirst, first,
-		hasSecond, second,
-		body)
-	io.WriteString(w, "This is my website!\n")
-
-}
-func getHello(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
-	method := r.Method
-	fmt.Printf("method: %s\n", method)
-	if method != "POST" {
-		w.Header().Set("Allow", "POST")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	myName := r.PostFormValue("myName")
-	if myName == "" {
-		w.Header().Set("x-missing-field", "myName")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	io.WriteString(w, fmt.Sprintf("Hello, %s!\n", myName))
-}
-
-func transactionCrud(w http.ResponseWriter, r *http.Request) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", getRoot)
-	mux.HandleFunc("/hello", getHello)
-	mux.HandleFunc("/transaction", transactionCrud)
+	return nil
 }
 
 func Serve(port string, repository *transaction.SQLiteRepository) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", getRoot)
-	mux.HandleFunc("/hello", getHello)
-	mux.HandleFunc("/transaction", transactionCrud)
+	mux := &http.ServeMux{}
 
-	// ctx, cancelCtx := context.WithCancel(context.Background())
-	ctx := context.Background()
+	mux.HandleFunc("/transaction/:id", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		transaction, err := repository.GetById(r.PathValue("id"))
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("got transaction: %+v\n", transaction)
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(transaction)
+
+	})
+	mux.HandleFunc("/transaction", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			var transactionCreate transaction.TransactionCreate
+			err := validateTransactionRequestBody(r.Body, &transactionCreate)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			transaction, err := repository.Create(transactionCreate)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				if err.Error() == "record already exists" {
+					w.WriteHeader(http.StatusForbidden)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				json.NewEncoder(w).Encode(struct {
+					ErrorMessage string
+				}{
+					ErrorMessage: err.Error(),
+				})
+				return
+			}
+			fmt.Printf("created transaction: %+v\n", transaction)
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(transaction)
+		} else if r.Method == "GET" {
+			transactions, err := repository.All()
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("got transaction: %+v\n", transactions)
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(transactions)
+		}
+	})
 	server := &http.Server{
 		Addr:    ":3333",
 		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
-			return ctx
-		},
 	}
-	fmt.Printf("listening on localhost%s\n", port)
+	fmt.Printf("listening on %s\n", server.Addr)
 	err := server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
