@@ -48,7 +48,7 @@ func (r *SQLiteRepository) Create(transaction TransactionCreate) (*Transaction, 
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec("INSERT INTO transactions( userid, orderid, storeid, amount, details) values(?,?,?,?,?)",
+	res, err := tx.Exec("INSERT INTO transactions(userid, orderid, storeid, amount, details) values(?,?,?,?,?)",
 		transaction.UserId, transaction.OrderId, transaction.StoreId, transaction.Amount, transaction.Details)
 	if err != nil {
 		var sqliteErr sqlite3.Error

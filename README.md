@@ -9,6 +9,7 @@
 - [.] Misc
   - [x] centralized logging w debug mode
   - [ ] log to file
+  - [ ] Actual migrations sytem/tool
 - [ .] Accounting
   - [.] Transaction CRUD Impl
     - [x] POST
@@ -43,3 +44,5 @@
       - [ ] created (pending/fullfilled) orders by user
 - [ ] Payment
   - [ ]v0 "CONTACT SELELR AFTER CREATING ORDER"
+  - [ ] Payment Gateway Provider
+  - [ ] compliance of api
