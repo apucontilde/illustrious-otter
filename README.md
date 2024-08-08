@@ -10,6 +10,7 @@
   - [x] centralized logging w debug mode
   - [ ] log to file
   - [ ] Actual migrations sytem/tool
+  - [ ] Func/Integration testing tool
 - [ .] Accounting
   - [.] Transaction CRUD Impl
     - [x] POST
@@ -17,9 +18,9 @@
     - [x] GET ALL
     - [x] UPDATE
     - [ ] DELETE (virtual delete)
-    - [ ] Transaction schema fix
+    - [x] Transaction schema fix
   - [ ] Transaction CRUD Integration Tests (httptester)
-  - [ ] balance(start_date, end_date, filters) Impl
+  - [x] balance(start_date, end_date, filters) Impl
   - [ ] balance func testing
   - [ ] balance func usages Interface
 - [ ] Auth

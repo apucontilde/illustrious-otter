@@ -1,9 +1,10 @@
-package transaction
+package database
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/mattn/go-sqlite3"
 )
@@ -20,6 +21,12 @@ type SQLiteRepository struct {
 }
 
 func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
+	// if do_migrate {
+	// 	if err := transactionRepository.Migrate(); err != nil {
+	// 		Error(context.Background(), "error running migrations %s\n", err)
+	// 	}
+
+	// }
 	return &SQLiteRepository{
 		db: db,
 	}
@@ -111,12 +118,11 @@ func (r *SQLiteRepository) GetById(Id string) (*Transaction, error) {
 	return &t, nil
 }
 
-func (r *SQLiteRepository) Update(id int64, updated Transaction) (*Transaction, error) {
-	if id == 0 {
+func (r *SQLiteRepository) UpdateField(id string, fieldName string, fieldValue string) (*Transaction, error) {
+	if id == "" {
 		return nil, errors.New("invalid updated ID")
 	}
-	res, err := r.db.Exec("UPDATE transactions SET userid = ?, orderid = ?, storeid = ?, amount = ?, details = ?  WHERE id = ?",
-		&updated.UserId, &updated.OrderId, &updated.StoreId, &updated.Amount, &updated.Details, id)
+	res, err := r.db.Exec("UPDATE transactions SET ? = ?  WHERE id = ?", fieldName, fieldValue, id)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +135,35 @@ func (r *SQLiteRepository) Update(id int64, updated Transaction) (*Transaction, 
 	if rowsAffected == 0 {
 		return nil, ErrUpdateFailed
 	}
+	t, err := r.GetById(fmt.Sprintf("%v", id))
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
 
-	return &updated, nil
+func (r *SQLiteRepository) UpdateOrderId(id string, orderId string) (*Transaction, error) {
+	if id == "" {
+		return nil, errors.New("invalid updated ID")
+	}
+	res, err := r.db.Exec("UPDATE transactions SET orderId = ?  WHERE id = ?", orderId, id)
+	if err != nil {
+		return nil, err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+
+	if rowsAffected == 0 {
+		return nil, ErrUpdateFailed
+	}
+	t, err := r.GetById(fmt.Sprintf("%v", id))
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (r *SQLiteRepository) Delete(id int64) error {
@@ -149,4 +182,25 @@ func (r *SQLiteRepository) Delete(id int64) error {
 	}
 
 	return err
+}
+
+func (r *SQLiteRepository) GetStoreBalance(StoreId string, From string, To string) ([]StoreBalance, error) {
+	if StoreId == "" {
+		return nil, errors.New("invalid updated ID")
+	}
+	rows, err := r.db.Query("SELECT StoreId, SUM(amount) as Balance  FROM transactions WHERE at < ? AND at > ? GROUP BY StoreId = ?", To, From, StoreId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var all []StoreBalance
+	for rows.Next() {
+		var b StoreBalance
+		if err := rows.Scan(&b.StoreId, &b.Balance); err != nil {
+			return nil, err
+		}
+		all = append(all, b)
+	}
+
+	return all, nil
 }

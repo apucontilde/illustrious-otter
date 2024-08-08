@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 
-	"github.com/apucontilde/illustrious-otter/transaction"
+	"github.com/apucontilde/illustrious-otter/database"
 )
 
-func validateTransactionRequestBody(body io.Reader, transaction *transaction.TransactionCreate) error {
+func validateTransactionRequestBody[T any](body io.Reader, transaction *T) error {
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&transaction)
 	if err != nil {
@@ -19,10 +20,11 @@ func validateTransactionRequestBody(body io.Reader, transaction *transaction.Tra
 	return nil
 }
 
-func Serve(port string, repository *transaction.SQLiteRepository) {
+func Serve(port string, db *sql.DB) {
 	mux := &http.ServeMux{}
-	mux.HandleFunc("/transaction/{id}", HandleTransactionById(repository))
-	mux.HandleFunc("/transaction", HandlePOSTTransaction(repository))
+
+	repository := database.NewSQLiteRepository(db)
+	mux.Handle("/transaction/{id}", TransactionHandler{transactions: repository})
 	server := &http.Server{
 		Addr:    ":3333",
 		Handler: mux,
