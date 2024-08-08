@@ -26,7 +26,7 @@ func Serve(port string, db *sql.DB) {
 	repository := database.NewSQLiteRepository(db)
 	mux.Handle("/transaction/{id}", TransactionHandler{transactions: repository})
 	server := &http.Server{
-		Addr:    ":3333",
+		Addr:    port,
 		Handler: mux,
 	}
 	Info("listening", "addr", server.Addr)

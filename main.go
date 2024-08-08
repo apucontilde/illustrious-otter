@@ -31,6 +31,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	Serve(":3333", db)
+	Serve(":80", db)
 
 }
